@@ -9,6 +9,8 @@ All processing happens on your machine. No data leaves your computer.
 
 ![Local RAG App](https://img.shields.io/badge/runs-locally-green)
 
+![Screenshot](qmd-dmr-demo.png)
+
 ## Prerequisites
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Model Runner enabled

@@ -1,7 +1,7 @@
 [project]
-name = "qmd-dmr-demo"
+name = "local-rag"
 version = "0.1.0"
-description = "Local RAG app combining QMD (hybrid markdown search) with Docker Model Runner"
+description = "Local RAG app with QMD and Docker Model Runner"
 requires-python = ">=3.10"
 dependencies = [
     "streamlit>=1.30.0",

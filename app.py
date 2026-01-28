@@ -54,7 +54,7 @@ def get_available_models() -> list[dict]:
     return []
 
 
-def search_with_qmd(query: str, num_results: int = 5, min_score: float = 0.3) -> dict:
+def search_with_qmd(query: str, num_results: int = 5, min_score: float = 0.3) -> list:
     """Use QMD to search for relevant documents."""
     try:
         result = subprocess.run(
@@ -66,13 +66,13 @@ def search_with_qmd(query: str, num_results: int = 5, min_score: float = 0.3) ->
             ],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=60
         )
         if result.returncode == 0:
             return json.loads(result.stdout)
     except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError) as e:
         st.error(f"QMD search error: {e}")
-    return {"results": []}
+    return []
 
 
 def generate_response(
@@ -142,13 +142,13 @@ def get_qmd_status() -> dict:
 def main():
     st.set_page_config(
         page_title="Local RAG",
-        page_icon="\U0001F433",
+        page_icon="🐳",
         layout="wide"
     )
 
     # Sidebar for configuration
     with st.sidebar:
-        st.header("\u2699\ufe0f Configuration")
+        st.header("⚙️ Configuration")
 
         # Model selection
         models = get_available_models()
@@ -161,7 +161,7 @@ def main():
             )
         else:
             selected_model = DEFAULT_MODEL
-            st.warning("\u26a0\ufe0f Docker Model Runner not available")
+            st.warning("⚠️ Docker Model Runner not available")
 
         st.divider()
 
@@ -177,39 +177,40 @@ def main():
 
         qmd_status = get_qmd_status()
         if qmd_status["available"]:
-            st.success("\u2713 QMD ready")
+            st.success("✓ QMD ready")
         else:
-            st.error("\u2717 QMD not found")
+            st.error("✗ QMD not found")
             st.code("bun install -g https://github.com/tobi/qmd", language="bash")
 
         if models:
-            st.success(f"\u2713 {len(models)} models available")
+            st.success(f"✓ {len(models)} models available")
         else:
-            st.error("\u2717 Docker Model Runner not running")
+            st.error("✗ Docker Model Runner not running")
 
         test_embedding = get_embedding("test")
         if test_embedding:
-            st.success(f"\u2713 Embeddings ready ({len(test_embedding)}d)")
+            st.success(f"✓ Embeddings ready ({len(test_embedding)}d)")
         else:
-            st.warning("\u26a0 No embedding model")
+            st.warning("⚠ No embedding model")
             st.code("docker model pull ai/embeddinggemma", language="bash")
 
     # Main content
-    st.title("\U0001F433 Local RAG Assistant")
-    st.caption("Search your knowledge base and get AI-powered answers \u2014 powered by Docker Model Runner")
+    st.title("🐳 Local RAG Assistant")
+    st.caption("Search your knowledge base and get AI-powered answers — powered by Docker Model Runner")
 
-    # Question input with search button on same row
-    col1, col2 = st.columns([5, 1])
+    # Question input with search button on same row (form allows Enter to submit)
+    with st.form(key="search_form"):
+        col1, col2 = st.columns([5, 1])
 
-    with col1:
-        question = st.text_input(
-            "Ask a question about your documents",
-            placeholder="e.g., What were the key decisions from the last planning meeting?",
-            label_visibility="collapsed"
-        )
+        with col1:
+            question = st.text_input(
+                "Ask a question about your documents",
+                placeholder="e.g., What were the key decisions from the last planning meeting?",
+                label_visibility="collapsed"
+            )
 
-    with col2:
-        search_button = st.button("\U0001F50D Search", type="primary", use_container_width=True)
+        with col2:
+            search_button = st.form_submit_button("🔍 Search", type="primary", use_container_width=True)
 
     st.divider()
 
@@ -217,9 +218,7 @@ def main():
         # Search phase
         with st.status("Searching knowledge base...", expanded=True) as status:
             st.write("Running hybrid search (BM25 + vector + LLM reranking)...")
-            search_results = search_with_qmd(question, num_results, min_score)
-
-            results = search_results.get("results", [])
+            results = search_with_qmd(question, num_results, min_score)
 
             if not results:
                 status.update(label="No results found", state="error")
@@ -232,7 +231,7 @@ qmd embed""", language="bash")
             status.update(label=f"Found {len(results)} relevant documents", state="complete")
 
         # Display search results
-        with st.expander(f"\U0001F4DA Retrieved Documents ({len(results)})", expanded=False):
+        with st.expander(f"📚 Retrieved Documents ({len(results)})", expanded=False):
             for i, doc in enumerate(results):
                 score_pct = int(doc.get("score", 0) * 100)
                 score_color = "green" if score_pct > 70 else "orange" if score_pct > 40 else "blue"
@@ -253,7 +252,7 @@ qmd embed""", language="bash")
         ])
 
         # Generation phase
-        st.subheader("\U0001F4AC Response")
+        st.subheader("💬 Response")
 
         response_container = st.empty()
 
@@ -277,7 +276,7 @@ qmd embed""", language="bash")
                                 content = delta.get("content", "")
                                 if content:
                                     full_response += content
-                                    response_container.markdown(full_response + "\u258c")
+                                    response_container.markdown(full_response + "▌")
                             except json.JSONDecodeError:
                                 continue
 
@@ -287,7 +286,7 @@ qmd embed""", language="bash")
                 st.caption(f"**Sources:** {', '.join([doc.get('file', '') for doc in results])}")
 
         # Optional: Show embedding similarities using DMR
-        with st.expander("\U0001F9EE Embedding Similarities (via Docker Model Runner)", expanded=False):
+        with st.expander("🧮 Embedding Similarities (via Docker Model Runner)", expanded=False):
             question_embedding = get_embedding(question)
             if question_embedding:
                 st.caption("Cosine similarity between your question and each document (using DMR's EmbeddingGemma):")
